@@ -6,7 +6,7 @@ setup(**{
     'author': 'Alexey Poryadin',
     'author_email': 'alexey.poryadin@gmail.com',
     'description': 'This module help to build uniting multiprocessing tornado apps.',
-    'py_modules': ['unity'],
+    'packages': ['unity'],
     'install_requires': [
         'tornado>=4.3',
     ],

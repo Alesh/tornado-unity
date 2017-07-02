@@ -1,0 +1,40 @@
+section.form {
+	padding: 20px 0;
+}
+
+section.form h2 {
+	font-size: 150%;
+	padding: 10px 0;
+	text-align: center;
+
+}
+
+section.form label {
+	padding: 4px 0;
+	display: block;
+	clear: both;
+}
+
+section.form label hr {
+	display: inline-block;
+    width: 100%;
+}
+
+section.form {
+	width: 350px;
+}
+
+section.form label span {
+	float: left;
+}
+
+
+section.form label input, textarea {
+	margin-bottom: 5px;
+	float: right;
+	width: 250px;
+}
+
+section.form label button {
+	float: right;
+}

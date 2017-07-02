@@ -1,0 +1,36 @@
+{% extends "_base.html" %}
+{% block title %}Sample{% end %}
+{% block stylesheet %}
+	<link rel="stylesheet" href="{{ static_url('index.css') }}" type="text/css">
+{% end %}
+
+{% block content %}
+<div class="content">
+	<section class="form">
+		<form id="send">
+		<label>
+			<span>Message</span>
+			<input type="text" name="message">
+		</label>
+		<label><button>Send</button></label>
+		</form>
+	<section>
+	<section class="form">
+		<form>
+		<label>
+			<textarea id="console" readonly="readonly"></textarea>
+		</label>
+		</textarea>
+		</form>
+	<section>
+</div>
+<script type="text/javascript">
+$("#send").submit(function(event) {
+  var message = $("input[name=message]").val();
+  $.post("/send", {message: message}, function( data ) {
+  	alert(data);
+  });
+  event.preventDefault();
+});	
+</script>
+{% end %}
