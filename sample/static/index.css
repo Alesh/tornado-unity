@@ -29,10 +29,20 @@ section.form label span {
 }
 
 
-section.form label input, textarea {
+section.form label input, textarea, select {
 	margin-bottom: 5px;
 	float: right;
 	width: 250px;
+}
+
+section.form label #to {
+   min-height: 22px;
+   width: auto;
+}
+
+section.form label textarea {
+    min-height: 200px;
+	width: 350px;
 }
 
 section.form label button {

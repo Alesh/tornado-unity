@@ -7,6 +7,7 @@ import logging
 from time import time
 import multiprocessing
 import tornado.ioloop
+import tornado.gen
 from tornado.concurrent import Future
 from .utils import fqc_name
 
@@ -19,6 +20,7 @@ class EndPoint(object):
         self._debug = debug
         self._router = router
         self._pendings = dict()
+        self._deferreds = dict()
         self._channel = multiprocessing.Queue()
 
     def start(self, ioloop):
@@ -36,8 +38,8 @@ class EndPoint(object):
         try:
             message = (recipient, ('MESSAGE', message))
             self._router.put_nowait(message)
-            if self._debug:
-                logging.info("Endpoint '%s' sent message: %s", fqc_name(self), message)
+            # if self._debug:
+            #     logging.info("Endpoint '%s' sent message: %s", fqc_name(self), message)
         except queue.Full:
             logging.error("Cannot send message to '%s', router query is full", recipient)
 
@@ -48,8 +50,8 @@ class EndPoint(object):
         try:
             message = (recipient, ('CALL', method, args, kwargs, future_id, fqc_name(self)))
             self._router.put_nowait(message)
-            if self._debug:
-                logging.info("Endpoint '%s' sent message: %s", fqc_name(self), message)
+            # if self._debug:
+            #     logging.info("Endpoint '%s' sent message: %s", fqc_name(self), message)
         except queue.Full as exc:
             future.set_exception(exc)
             logging.error("Cannot remote call to '%s', router query is full", recipient)
@@ -57,11 +59,37 @@ class EndPoint(object):
 
     def _on_channel(self, *args):
         message = self._channel.get_nowait()
-        if self._debug:
-            logging.info("Endpoint '%s' received message: %s", fqc_name(self), message)
+        # if self._debug:
+        #     logging.info("Endpoint '%s' received message: %s", fqc_name(self), message)
         self._on_message(message)
 
     def _on_message(self, message):
+
+        @tornado.gen.coroutine
+        def wrap_awaitable(x):
+            if hasattr(x, '__await__'):
+                x = x.__await__()
+            return (yield from x)
+
+        def send_future_result(recipient, future_id, has_result, result):
+            try:
+                message = (recipient, ('FUTURE', future_id, has_result, result))
+                self._router.put_nowait(message)
+                # if self._debug:
+                #     logging.info("Endpoint '%s' sent message: %s", fqc_name(self), message)
+            except queue.Full:
+                logging.error("Cannot send future result to '%s', router query is full", recipient)
+
+        def deferred_done(future):
+            has_result = False
+            recipient, future_id, _ = self._deferreds.pop(future)
+            try:
+                result = future.result()
+                has_result = True
+            except Exception as exc:
+                result = exc
+            send_future_result(recipient, future_id, has_result, result)
+
         if message and message[0] == 'MESSAGE':
             self.on_message(message[1])
         elif message and message[0] == 'FUTURE':
@@ -81,18 +109,20 @@ class EndPoint(object):
             try:
                 if method is not None:
                     result = method(*args, **kwargs)
+                    if hasattr(result, '__await__') or hasattr(result, 'add_done_callback'):
+                        deferred = wrap_awaitable(result)
+                        if deferred.done():
+                            result = deferred.result()
+                        else:
+                            self._deferreds[deferred] = (recipient, future_id, time())
+                            deferred.add_done_callback(deferred_done)
+                            return
                     has_result = True
                 else:
                     raise LookupError("Endpoint '{}' has not method '{}'".format(fqc_name(self), name))
             except Exception as exc:
                 result = exc
-            try:
-                message = (recipient, ('FUTURE', future_id, has_result, result))
-                self._router.put_nowait(message)
-                if self._debug:
-                    logging.info("Endpoint '%s' sent message: %s", fqc_name(self), message)
-            except queue.Full:
-                logging.error("Cannot send future result to '%s', router query is full", recipient)
+            send_future_result(recipient, future_id, has_result, result)
 
 
 class SubProcess(EndPoint):

@@ -1,10 +1,32 @@
 """ Sample service
 """
+import os
 import sys
 import os.path
 import tornado.web
 import unity
 from unity import Service, ModuleConfig as Config, fqc_name
+
+
+class ProcessA(unity.SubProcess):
+    """ Process A
+    """
+
+    def sync_call(self, marker):
+        return {'sync_call': fqc_name(self), 'marker': marker, 'pid': os.getpid()}
+
+    async def async_call(self, marker):
+        return {'async_call': fqc_name(self), 'marker': marker, 'pid': os.getpid()}
+
+
+class ProcessB(unity.SubProcess):
+    """ Process B
+    """
+
+    async def async_call(self, marker):
+        message = {'async_call': fqc_name(self), 'marker': marker, 'pid': os.getpid()}
+        result = await self.remote_call(fqc_name(ProcessA), 'async_call', message)
+        return result
 
 
 class IndexHandler(tornado.web.RequestHandler):
@@ -15,8 +37,12 @@ class IndexHandler(tornado.web.RequestHandler):
         self.render('index.html')
 
     async def post(self):
+        to = self.get_argument('to')
+        endpoint, method = ((fqc_name(ProcessA), 'sync_call')
+                            if to == 'A' else
+                            (fqc_name(ProcessB), 'async_call'))
         message = self.get_argument('message')
-        result = await self.application.service.remote_call('__main__.ProcessA', 'sync_call', message)
+        result = await self.application.service.remote_call(endpoint, method, message)
         self.write({'result': result})
 
 
@@ -34,22 +60,6 @@ class Application(tornado.web.Application):
             'static_path': os.path.join(os.path.dirname(__file__), 'static'),
             'debug': service.config.debug,
         })
-
-
-class ProcessA(unity.SubProcess):
-    """ Process A
-    """
-
-    def sync_call(self, marker):
-        return {'sync_call': fqc_name(self), 'marker': marker}
-
-
-class ProcessB(unity.SubProcess):
-    """ Process B
-    """
-
-    async def async_call(self, marker):
-        return {'async_call': fqc_name(self), 'marker': marker}
 
 
 if __name__ == '__main__':

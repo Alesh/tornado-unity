@@ -11,6 +11,10 @@
 		<label>
 			<span>Message</span>
 			<input type="text" name="message">
+			<select id="to">
+				<option value="A">A</option>
+				<option value="B">B</option>
+			</select>
 		</label>
 		<label><button>Send</button></label>
 		</form>
@@ -18,7 +22,7 @@
 	<section class="form">
 		<form>
 		<label>
-			<textarea id="console" readonly="readonly"></textarea>
+			<textarea id="console"></textarea>
 		</label>
 		</textarea>
 		</form>
@@ -26,9 +30,11 @@
 </div>
 <script type="text/javascript">
 $("#send").submit(function(event) {
-  var message = $("input[name=message]").val();
-  $.post("/send", {message: message}, function( data ) {
-  	alert(data);
+  $.post("/send", {
+  	to: $("#to").val(), 
+  	message: $("input[name=message]").val()
+  }, function(data) {
+  	$('#console').append(JSON.stringify(data) + "\n");
   });
   event.preventDefault();
 });	

@@ -93,7 +93,7 @@ class Service(EndPoint):
             # Kill process with the same name if exists
             if self._subprocesses[name].process is not None:
                 process = self._subprocesses[name].process
-                logging.error("Subprocess %s(%s) is restarting", name, process.pid)
+                logging.error("Subprocess %s(%s) is fail and need to be restarted", name, process.pid)
                 if process.is_alive():
                     process.terminate()
                 del self._subprocesses[name]
@@ -140,8 +140,8 @@ class Service(EndPoint):
 
     def _on_router(self, *args):
         recipient, message = self._router.get(block=False)
-        if self._debug:
-            logging.info("Router for '%s' received message: %s", recipient, message)
+        # if self._debug:
+        #     logging.info("Router for '%s' received message: %s", recipient, message)
         channel = None
         if recipient in self._subprocesses:
             channel = self._subprocesses[recipient].channel
@@ -152,7 +152,7 @@ class Service(EndPoint):
             return
         try:
             channel.put(message, block=False)
-            if self._debug:
-                logging.info("Router sent for '%s' message: %s", recipient, message)
+            # if self._debug:
+            #     logging.info("Router sent for '%s' message: %s", recipient, message)
         except queue.Full:
             logging.warning("Cannot send message to '%s', its query is full", recipient)
